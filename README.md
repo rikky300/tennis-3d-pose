@@ -19,6 +19,7 @@
   - [MixSTE](https://arxiv.org/abs/2203.00859)（Zhang+, CVPR 2022）— 空間・時間の注意を交互に掛けるネットワーク
   - [DDPM](https://arxiv.org/abs/2006.11239)（Ho+, 2020）/ [DDIM](https://arxiv.org/abs/2010.02502)（Song+, 2021）/ [Improved DDPM](https://arxiv.org/abs/2102.09672)（Nichol & Dhariwal, 2021）
   - [知識蒸留](https://arxiv.org/abs/1503.02531)（Hinton+, 2015）
+  - [One Euro filter](https://gery.casiez.net/1euro/)（Casiez+, CHI 2012）— 時間方向のならし
 - **モデル**
   - [SAM 3D Body](https://github.com/facebookresearch/sam-3d-body)（Meta, 2025）— 蒸留の先生
   - [ViTPose](https://arxiv.org/abs/2204.12484)（Xu+, NeurIPS 2022）— 2D 骨格
@@ -29,10 +30,11 @@
 
 ## 手法
 ```
-動画 → 人の検出・追跡（RT-DETR）→ 2D 骨格 17 点（ViTPose）→ 拡散モデル → 3D 骨格 26 点 → 骨の長さをそろえる
+動画 → 人の検出・追跡（RT-DETR）→ 2D 骨格 17 点（ViTPose）→ 拡散モデル → 3D 骨格 26 点 → 時間方向にならす → 骨の長さをそろえる
 ```
 - MixSTE 型（約 28 万パラメータ）、81 コマの窓、x0 予測
 - 生成は DDIM 10 ステップ × 候補 5 本の平均
+- ガタつきは One Euro filter を前向き・後ろ向きにかけて平均（遅れなし）。ゆっくりな動きは強く、速いスイングは弱くならす（デモの動画で加速度の平均 12.8 → 5.4 m/s²）
 - 見えない関節は「空」のトークンとして入力し、損失に入れない（親の関節で埋めると足が崩れたため）
 
 ## 学習
