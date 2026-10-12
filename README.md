@@ -2,7 +2,7 @@
 
 単眼のテニス動画から、選手の 3D 骨格（26 関節）を推定する拡散モデル。
 
-- **デモ**: https://tennis-3d-pose-308871972947.asia-northeast1.run.app （1 人 1 日 3 回まで）
+- **デモ**: https://tennis-3d-pose.tennis-ai.workers.dev （自分の動画で試すのは 1 人 1 日 3 回まで）
 - コードは非公開（紹介用のリポジトリ）
 
 ![demo](docs/demo.png)
@@ -66,6 +66,7 @@
 ## 構成
 ![system](docs/system_diagram.png)
 
+- 最初のページは CDN（Cloudflare）の静的ページ。動画を上げる人の時だけ推論のサーバーを起こす
 - 学習は Mac（Apple シリコンの GPU）、推論だけ Cloud Run（CPU、使わない時は 0 台）
 - W&B: 学習の記録・モデル登録・本番の印・データの来歴
 - Hugging Face（非公開）: 重みとデモの結果。重みの更新はコンテナを作り直さずに済む
