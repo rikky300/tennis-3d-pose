@@ -2,7 +2,8 @@
 
 単眼のテニス動画から、選手の 3D 骨格（26 関節）を推定する拡散モデル。
 
-- **デモ**: https://tennis-3d-pose.tennis-ai.workers.dev （自分の動画で試すのは 1 人 1 日 3 回まで）
+- **iPhone アプリ（App Store）**: [TennisPose3D](https://apps.apple.com/jp/app/tennispose3d/id6825789766) — 練習中にリアルタイムで 3D にして、フォームを声で一言コーチする
+- **Web のデモ**: https://tennis-3d-pose.tennis-ai.workers.dev （撮った動画をあとから 3D にする。自分の動画で試すのは 1 人 1 日 3 回まで）
 - コードは非公開（紹介用のリポジトリ）
 
 ![demo](docs/demo.png)
@@ -25,11 +26,14 @@
 - **モデル**
   - [SAM 3D Body](https://github.com/facebookresearch/sam-3d-body)（Meta, 2025）— 蒸留の正解を作るモデル
   - [ViTPose](https://arxiv.org/abs/2204.12484)（Xu+, NeurIPS 2022）— 2D 骨格（Web 版）
-  - [RTMPose](https://arxiv.org/abs/2303.07399)（Jiang+, 2023）— 2D 骨格（iPhone 版）
+  - [MobileNetV3](https://arxiv.org/abs/1905.02244)（Howard+, ICCV 2019）— iPhone 版の自前の 2D 骨格のモデルの土台
+  - [DARK](https://arxiv.org/abs/1910.06278)（Zhang+, CVPR 2020）— 2D のヒートマップから 1 画素より細かく位置を読む
+  - [RTMPose](https://arxiv.org/abs/2303.07399)（Jiang+, 2023）— 前の iPhone 版の 2D 骨格（今は比べる基準だけ）
   - [RT-DETR](https://arxiv.org/abs/2304.08069)（Zhao+, CVPR 2024）— 人の検出
 - **データ**
   - [CMU Motion Capture](http://mocap.cs.cmu.edu/)・[AIST++](https://google.github.io/aistplusplus_dataset/)（[Li+, ICCV 2021](https://arxiv.org/abs/2101.08779)）— 事前学習
   - [Wikimedia Commons のテニス動画](https://commons.wikimedia.org/wiki/Category:Videos_of_tennis)（CC BY-SA 3.0）— 蒸留
+  - [COCO](https://cocodataset.org/)（Lin+, ECCV 2014）— iPhone 版の 2D の学習（画像のライセンスが商用可のもの 12,442 枚だけ）
   - [3DPW](https://virtualhumans.mpi-inf.mpg.de/3DPW/)（von Marcard+, ECCV 2018）— 評価だけ（IMU で測った本物の 3D。学習には使わない）
 
 ## 手法
@@ -39,15 +43,15 @@
 | | Web 版 | iPhone 版 |
 |---|---|---|
 | 人の検出 | RT-DETR | iPhone の Vision |
-| 2D ＋ 特徴 | ViTPose-B | RTMPose-s |
-| 3D に使うコマ | 前後 81 コマ | 過去 27 コマ |
-| ならし | One Euro（前向き・後ろ向きの平均） | One Euro（前向きだけ） |
+| 2D ＋ 特徴 | ViTPose-B | 自前のモデル（MobileNetV3、商用で使えるデータだけで学習） |
+| 3D に使うコマ | 前後 81 コマ | 過去 27 コマ（1 秒 10 回） |
+| ならし | One Euro（前向き・後ろ向きの平均） | One Euro（前向きだけ）＋ 骨の長さをそろえる |
 
 - 3D のモデル: MixSTE 型（幅 128・4 層、約 123 万パラメータ、4.9 MB）。両方の版で同じ形
-- 画像の特徴: 2D のモデルの途中の特徴（768 次元）を関節の位置で取り出し、関節の入力に足す。2D の点だけでは分からない奥行きの手がかりになる（Context-Aware PoseFormer の考え方）
+- 画像の特徴: 2D のモデルの途中の特徴（Web 版 768 次元・iPhone 版 1,216 次元）を関節の位置で取り出し、関節の入力に足す。2D の点だけでは分からない奥行きの手がかりになる（Context-Aware PoseFormer の考え方）
 - 生成は 1 段・候補 1 つ。DDIM 10 段 × 候補 5 つの平均より精度が良く（テニスで MPJPE 49 → 45 mm）、3D の計算は約 50 倍速い
 - 見えない関節は「空」として入力し、損失にも入れない
-- RTMPose の重みは、学習データに研究用のデータセットを含む
+- iPhone 版の 2D: 公開の 2D のモデル（RTMPose など）は学習データに研究用のデータセットを含み、アプリでは使えない → 自前で作った。COCO の商用可の画像と、テニスの映像に SAM 3D Body を写した 2D で学習し、動きの止まった枠を動かさない追い方と合わせて、テニスの映像で RTMPose-s 並み（ずれ 0.067 対 0.066、膝の角度の差 5.5° 対 5.8°）
 
 ## 学習
 1. **事前学習**: CMU・AIST++ の 3D を仮想カメラで 2D に写し、欠け・ずれ・外れ値を加えて学習
@@ -76,12 +80,24 @@
 |---|---|---|---:|---:|---:|
 | SAM 3D Body | — | — | 約 4,000 ms | 基準 | 61 / 42 mm |
 | **Web 版**（Mac CPU） | ViTPose-B | 前後 81 コマ | 74 ms | 86 / 58 mm | 96 / 65 mm |
-| **iPhone 版**（iPhone 14） | RTMPose-s | 過去 27 コマ | 33 ms | 85 / 58 mm | 102 / 69 mm |
+| **iPhone 版**（iPhone 14） | 自前（MobileNetV3） | 過去 27 コマ | 2D 12 ms ＋ 3D 9 ms（1 秒 10 回） | 91 / 68 mm | — |
+| 前の iPhone 版 | RTMPose-s | 過去 27 コマ | 33 ms | 83 / 56 mm | 102 / 69 mm |
 
 - 精度は MPJPE / PA-MPJPE。プロの映像は SAM 3D Body の出力との差、3DPW は実測の 3D との差（屋外 24 本）
 - 1 コマあたりの時間は、人の検出から 3D までの合計。33 ms 以内なら 1 秒 30 コマの映像に遅れない
-- iPhone 版の精度は、同じモデルを Mac で測った値。3DPW では Web 版より約 5 mm 悪い
-- 方針: Web 版は撮った動画をあとから分析する用に精度を、iPhone 版は練習中のリアルタイムコーチング用に速さを優先する
+- iPhone 版の精度は、同じモデルを Mac で測った値。今の iPhone 版の 3DPW はまだ測っていない
+- 2D を自前のモデルに替えて、テニス教本の評価 3 本では良くなった（MPJPE 51 → 43 mm）が、プロの試合の映像 2 本では悪くなった（83 → 91 mm）。自前の 2D の学習に、試合の映像（遠い・小さい人）が少ないため。次は撮影の映像を足して学習し直す
+- 方針: Web 版は撮った動画をあとから分析する用に精度を、iPhone 版は練習中のリアルタイムコーチング用に速さと、商用で使えることを優先する
+
+## iPhone アプリ
+[App Store](https://apps.apple.com/jp/app/tennispose3d/id6825789766)（無料。Pro は月額・年額のサブスクリプション）
+- iPhone を横に置いて振ると、カメラの 2D の骨格をその場で 3D にして、スイングを自動で見つけ、フォアハンド・バックハンド・サーブを見分ける
+- フォアハンドの膝の曲がり・肩の回し・振り抜き・体重移動を測り、何度も出る課題だけを声で一言（「膝を曲げよう」など）
+- 練習のあと、スイングごとの短い映像と、指で回せる 3D の骨格で見返せる
+- 計算はすべて iPhone の中（映像は外に送らない）。2D は GPU（16 ビット）、3D は Neural Engine
+- 速さ（iPhone 14、続けて練習した時）: 1 秒 30 コマ・CPU 49%。Core ML への変換を 1 回だけにして、カメラの準備を 12.5 秒 → 1.2 秒に
+- コーチングの確かめ（撮影と教本の 4 本・フォアハンド 40 本、Mac で iPhone と同じ処理を再現）: スイングを見つけた 40 / 40・種類の取り違え 1・声の一言が正解と同じ 38 / 40・一言が出るまで 0.17〜0.27 秒
+- 表示の遅れ: 生のカメラに骨格を重ねると計算の時間だけ骨格が遅れる → 計算したコマそのものを表示して、映像と骨格をそろえた
 
 ## 構成
 ![system](docs/system_diagram.png)
