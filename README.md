@@ -6,7 +6,9 @@
 - **Web のデモ**: https://tennis-3d-pose.tennis-ai.workers.dev （撮った動画をあとから 3D にする。自分の動画で試すのは 1 人 1 日 3 回まで）
 - コードは非公開（紹介用のリポジトリ）
 
-![demo](docs/demo.png)
+![demo](docs/web.gif)
+
+<sub>Web 版。映像: Pexels（cottonbro studio）</sub>
 
 ## 背景
 - プロや自分のフォームを 3D で細かく見たい
@@ -85,7 +87,9 @@
 ## iPhone アプリ
 [App Store](https://apps.apple.com/jp/app/tennispose3d/id6825789766)（無料。Pro は月額・年額のサブスクリプション）
 
-<img src="docs/app.gif" width="320" alt="TennisPose3D">
+![iPhone 版](docs/ios.gif)
+
+<sub>iPhone 版と同じ処理（自前の 2D ＋ 3D を 1 秒 10 回）を Mac で再現。映像: Wikimedia Commons「0DRIVE」（Dardo 86 7, CC BY-SA 3.0。この GIF も CC BY-SA 3.0）</sub>
 
 - 横に置いて振るだけで、2D の骨格を 3D にしてスイングを解析し、気になる所を声で一言。計算はすべて iPhone の中
 - iPhone 14 で 1 秒 30 コマ。声の一言が正解と同じだったのはフォアハンド 40 本中 38 本
